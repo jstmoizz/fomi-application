@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { Copy, RefreshCw, RotateCcw, Trash2, TriangleAlert, Video, WandSparkles } from "lucide-react";
+import { Copy, RefreshCw, RotateCcw, Trash2, TriangleAlert, Video, WandSparkles, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import Spinner from "@/components/ui/Spinner";
@@ -9,7 +9,7 @@ import { modelName } from "@/data/catalog";
 import MediaCard, { isWide, ratio } from "./MediaCard";
 
 // One prompt + its results. Prompt card sits beside the grid on wide screens, above it otherwise.
-function GenerationBatch({ batch, eager, highlighted, onOpen, onReuse, onVariations, onDelete, onRetry, onCopy }) {
+function GenerationBatch({ batch, eager, highlighted, favorites, onOpen, onReuse, onVariations, onDelete, onRetry, onCancel, onCopy, onToggleFavorite }) {
   const { status = "done", aspect, prompt } = batch;
   const isVideo = batch.type === "video";
   const open = useCallback((index) => onOpen(batch.id, index), [onOpen, batch.id]);
@@ -30,6 +30,7 @@ function GenerationBatch({ batch, eager, highlighted, onOpen, onReuse, onVariati
         onReuse={onReuse}
         onVariations={onVariations}
         onDelete={onDelete}
+        onCancel={onCancel}
         onCopy={onCopy}
       />
 
@@ -70,7 +71,9 @@ function GenerationBatch({ batch, eager, highlighted, onOpen, onReuse, onVariati
                   duration={batch.duration}
                   fresh={batch.fresh}
                   eager={eager}
+                  liked={favorites.includes(item.id)}
                   onOpen={open}
+                  onToggleFavorite={onToggleFavorite}
                 />
               ))}
         </div>
@@ -79,7 +82,7 @@ function GenerationBatch({ batch, eager, highlighted, onOpen, onReuse, onVariati
   );
 }
 
-function PromptCard({ batch, status, isVideo, onReuse, onVariations, onDelete, onCopy }) {
+function PromptCard({ batch, status, isVideo, onReuse, onVariations, onDelete, onCancel, onCopy }) {
   const [expanded, setExpanded] = useState(false);
   const long = batch.prompt.length > 160;
   const done = status === "done";
@@ -108,6 +111,13 @@ function PromptCard({ batch, status, isVideo, onReuse, onVariations, onDelete, o
           <span className="flex items-center gap-2 text-[11px] font-medium text-ink-2">
             <Spinner size={12} className="text-accent" />
             {isVideo ? "Rendering video…" : "Generating…"}
+            <button
+              type="button"
+              onClick={() => onCancel(batch.id)}
+              className="ml-auto flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-ink-3 transition-colors duration-150 hover:bg-panel-strong hover:text-ink"
+            >
+              <X size={11} aria-hidden="true" /> Cancel
+            </button>
           </span>
           <span className="h-1 overflow-hidden rounded-full bg-panel-strong" aria-hidden="true">
             {/* Eases toward ~90% and waits, like a real queue; finishes when the batch lands. */}

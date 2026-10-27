@@ -13,26 +13,27 @@ const TABS = [
   { id: "assets", label: "Assets", icon: Folder },
 ];
 
-// Image/Video switch the composer mode; the other sections are not built yet and say so.
-export default function TopNav({ mode, onModeChange, onOpenGallery, onUnavailable }) {
+// Home returns to the top of the feed; Image/Video switch the composer mode; Edit/Assets are not built yet and say so.
+export default function TopNav({ mode, onModeChange, onOpenGallery, onHome, onUnavailable }) {
   const active = TABS.findIndex((t) => t.id === mode);
 
   const tabs = TABS.map((tab) => {
     const isMode = tab.id === "image" || tab.id === "video";
     const isActive = tab.id === mode;
+    const isSoon = !isMode && tab.id !== "home";
     return (
       <li key={tab.id} className="flex flex-1 justify-center">
         <button
           type="button"
           aria-current={isActive ? "page" : undefined}
-          onClick={() => (isMode ? onModeChange(tab.id) : onUnavailable(tab.label))}
+          onClick={() => (isMode ? onModeChange(tab.id) : isSoon ? onUnavailable(tab.label) : onHome())}
           className={`group/tab relative flex h-11 w-full flex-col items-center justify-center gap-0.5 rounded-xl transition-colors duration-150 md:h-9 md:w-11 ${
             isActive ? "text-ink" : "text-ink-3 hover:text-ink"
           }`}
         >
           <tab.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} aria-hidden="true" className="transition-transform duration-150 group-active/tab:scale-90" />
           <span className="text-[10px] font-medium md:sr-only">{tab.label}</span>
-          {!isMode && (
+          {isSoon && (
             <span
               aria-hidden="true"
               className="pointer-events-none absolute top-full z-50 mt-2 hidden whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-bg opacity-0 transition-opacity duration-150 group-hover/tab:opacity-100 group-hover/tab:delay-300 md:block"

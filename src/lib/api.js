@@ -11,10 +11,11 @@ export function fetchGenerations(cursor) {
   return request(`/api/generations?cursor=${cursor}`);
 }
 
-export function createGeneration(params) {
+export function createGeneration(params, signal) {
   return request("/api/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
+    signal,
   });
 }

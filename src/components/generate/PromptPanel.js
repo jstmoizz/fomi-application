@@ -20,7 +20,7 @@ const PLACEHOLDER = {
 };
 
 // The composer. Desktop/tablet: a fixed left column. Mobile: a bottom bar that expands into a sheet.
-function PromptPanel({ draft, onChange, onGenerate, pendingCount, textareaRef }) {
+function PromptPanel({ draft, onChange, onGenerate, pendingCount, lastPrompt, textareaRef }) {
   const [expanded, setExpanded] = useState(false);
   const promptId = useId();
   const { mode, prompt } = draft;
@@ -86,6 +86,11 @@ function PromptPanel({ draft, onChange, onGenerate, pendingCount, textareaRef })
             onChange={(e) => set({ prompt: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(e);
+              // Terminal-style recall: ↑ in an empty box brings back the last prompt.
+              if (e.key === "ArrowUp" && !prompt && lastPrompt) {
+                e.preventDefault();
+                set({ prompt: lastPrompt });
+              }
             }}
             maxLength={PROMPT_MAX + 200}
             rows={2}

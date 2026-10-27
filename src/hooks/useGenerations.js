@@ -1,25 +1,47 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createGeneration, fetchGenerations } from "@/lib/api";
+import { load, mergeBatches, save, stripFresh } from "@/lib/storage";
 
-// Owns the generation history: optimistic pending batches, retries, removal with undo, pagination.
+const STORAGE_KEY = "fomi:batches";
+// Batches the user made in this browser (server history is re-fetched, so only these need saving).
+const isOwn = (b) => b.id.startsWith("p") && b.status === "done";
+
+// Owns the generation history: optimistic pending batches, cancel, retries, removal with undo, pagination, persistence.
 export function useGenerations(initialPage) {
   const [batches, setBatches] = useState(initialPage.items);
   const [cursor, setCursor] = useState(initialPage.nextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [restored, setRestored] = useState(false);
   const loading = useRef(false);
+  const controllers = useRef(new Map());
+
+  // Restore after hydration; the page itself is prerendered without them.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- storage is only readable after hydration
+    setBatches((bs) => mergeBatches(load(STORAGE_KEY, []), bs));
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (restored) save(STORAGE_KEY, batches.filter(isOwn).map(stripFresh));
+  }, [batches, restored]);
 
   const patch = (id, update) => setBatches((bs) => bs.map((b) => (b.id === id ? { ...b, ...update } : b)));
 
   const run = useCallback(async (id, params) => {
+    const controller = new AbortController();
+    controllers.current.set(id, controller);
     try {
-      const result = await createGeneration(params);
+      const result = await createGeneration(params, controller.signal);
       // Keep the placeholder's id so React updates the same card in place.
       patch(id, { ...result, id, status: "done", fresh: true, error: null });
     } catch (e) {
-      patch(id, { status: "error", error: e.message });
+      if (e.name !== "AbortError") patch(id, { status: "error", error: e.message });
+    } finally {
+      controllers.current.delete(id);
     }
   }, []);
 
@@ -40,6 +62,11 @@ export function useGenerations(initialPage) {
     },
     [run],
   );
+
+  const cancel = useCallback((id) => {
+    controllers.current.get(id)?.abort();
+    setBatches((bs) => bs.filter((b) => b.id !== id));
+  }, []);
 
   /** Removes a batch and returns a function that puts it back where it was. */
   const remove = useCallback((id) => {
@@ -76,5 +103,5 @@ export function useGenerations(initialPage) {
     }
   }, [cursor]);
 
-  return { batches, generate, retry, remove, loadMore, hasMore: cursor != null, loadingMore, loadError };
+  return { batches, generate, retry, cancel, remove, loadMore, hasMore: cursor != null, loadingMore, loadError };
 }

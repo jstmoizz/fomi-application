@@ -7,6 +7,7 @@ import TopNav from "@/components/layout/TopNav";
 import { useToast } from "@/components/ui/Toast";
 import { DEFAULT_SETTINGS } from "@/data/catalog";
 import { useGenerations } from "@/hooks/useGenerations";
+import { useStoredState } from "@/lib/storage";
 import GenerationFeed from "./GenerationFeed";
 import PromptPanel from "./PromptPanel";
 
@@ -44,18 +45,35 @@ const scrollToBatch = (id) =>
 export default function Studio({ initialPage }) {
   const toast = useToast();
   const gen = useGenerations(initialPage);
-  const [draft, setDraft] = useState(INITIAL_DRAFT);
+  const [draft, setDraft] = useStoredState("fomi:draft", INITIAL_DRAFT);
+  const [favorites, setFavorites] = useStoredState("fomi:favorites", []);
   const [viewer, setViewer] = useState(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState(null);
   const textareaRef = useRef(null);
-  const { batches, generate, retry, remove } = gen;
+  const { batches, generate, retry, cancel, remove } = gen;
 
   const entries = useMemo(
     () => batches.filter((b) => !b.status || b.status === "done").flatMap((batch) => batch.items.map((item) => ({ item, batch }))),
     [batches],
   );
   const pendingCount = batches.filter((b) => b.status === "pending").length;
+  const lastPrompt = batches.find((b) => b.prompt)?.prompt ?? "";
+
+  // Progress in the tab title, so you can work elsewhere while a batch renders.
+  const baseTitle = useRef(null);
+  useEffect(() => {
+    baseTitle.current ??= document.title;
+    document.title = pendingCount ? `(${pendingCount}) Generating… · Fomi` : baseTitle.current;
+  }, [pendingCount]);
+
+  // Leaving mid-generation would lose the work in flight.
+  useEffect(() => {
+    if (!pendingCount) return;
+    const onUnload = (e) => e.preventDefault();
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [pendingCount]);
 
   // "/" jumps to the prompt from anywhere, like search in pro tools.
   useEffect(() => {
@@ -111,7 +129,7 @@ export default function Studio({ initialPage }) {
       focusPrompt();
       toast("Prompt and settings loaded");
     },
-    [toast],
+    [toast, setDraft],
   );
 
   const handleVariations = useCallback(
@@ -156,18 +174,47 @@ export default function Studio({ initialPage }) {
     setTimeout(() => setHighlightedId((h) => (h === id ? null : h)), 1400);
   }, []);
 
-  const handleSuggestion = useCallback((text) => {
-    setDraft((d) => ({ ...d, prompt: text }));
+  // When a batch lands somewhere you can't see, say so and offer a way back to it.
+  const inFlight = useRef(new Set());
+  useEffect(() => {
+    for (const b of batches) {
+      if (b.status === "pending") inFlight.current.add(b.id);
+      else if (inFlight.current.delete(b.id) && b.status === "done") {
+        const rect = document.getElementById(`batch-${b.id}`)?.getBoundingClientRect();
+        if (rect && (rect.bottom < 0 || rect.top > window.innerHeight)) {
+          const noun = b.type === "video" ? "clip" : "image";
+          toast(`${b.items.length} ${noun}${b.items.length > 1 ? "s" : ""} ready`, { label: "View", onClick: () => handleJump(b.id) });
+        }
+      }
+    }
+  }, [batches, toast, handleJump]);
+
+  const toggleFavorite = useCallback(
+    (id) => setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id])),
+    [setFavorites],
+  );
+
+  const handleHome = useCallback(() => {
+    document.getElementById("main")?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     focusPrompt();
   }, []);
 
+  const handleSuggestion = useCallback(
+    (text) => {
+      setDraft((d) => ({ ...d, prompt: text }));
+      focusPrompt();
+    },
+    [setDraft],
+  );
+
   const handleUnavailable = useCallback((name) => toast(`${name} is coming soon`), [toast]);
-  const handleMode = useCallback((mode) => setDraft((d) => ({ ...d, mode })), []);
+  const handleMode = useCallback((mode) => setDraft((d) => ({ ...d, mode })), [setDraft]);
   const openGallery = useCallback(() => setGalleryOpen(true), []);
 
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
-      <TopNav mode={draft.mode} onModeChange={handleMode} onOpenGallery={openGallery} onUnavailable={handleUnavailable} />
+      <TopNav mode={draft.mode} onModeChange={handleMode} onOpenGallery={openGallery} onHome={handleHome} onUnavailable={handleUnavailable} />
 
       <div className="mx-auto grid w-full max-w-[2200px] flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-4 px-4 pb-56 md:min-h-0 md:grid-cols-[280px_minmax(0,1fr)] md:px-6 md:pb-4 lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
         <HistoryStrip
@@ -183,6 +230,7 @@ export default function Studio({ initialPage }) {
             onChange={setDraft}
             onGenerate={handleGenerate}
             pendingCount={pendingCount}
+            lastPrompt={lastPrompt}
             textareaRef={textareaRef}
           />
         </aside>
@@ -201,7 +249,10 @@ export default function Studio({ initialPage }) {
             onVariations={handleVariations}
             onDelete={handleDelete}
             onRetry={retry}
+            onCancel={cancel}
             onCopy={handleCopy}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
           />
         </main>
       </div>
@@ -212,11 +263,14 @@ export default function Studio({ initialPage }) {
           startIndex={viewer.index}
           onClose={() => setViewer(null)}
           onReuse={handleReuse}
+          onVariations={handleVariations}
           onCopy={handleCopy}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
         />
       )}
       {galleryOpen && (
-        <Gallery entries={entries} onClose={() => setGalleryOpen(false)} onPick={(index) => setViewer({ entries, index })} />
+        <Gallery entries={entries} favorites={favorites} onClose={() => setGalleryOpen(false)} onPick={(index) => setViewer({ entries, index })} />
       )}
     </div>
   );

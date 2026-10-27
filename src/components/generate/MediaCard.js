@@ -9,9 +9,8 @@ export const ratio = (aspect) => aspect.replace(":", " / ");
 export const isWide = (aspect) => aspect === "16:9";
 
 // One generated image/video. The whole tile opens the lightbox; actions sit beside it (no nested buttons).
-function MediaCard({ item, aspect, index, total, prompt, isVideo, duration, fresh, eager, onOpen }) {
+function MediaCard({ item, aspect, index, total, prompt, isVideo, duration, fresh, eager, liked, onOpen, onToggleFavorite }) {
   const [hovered, setHovered] = useState(false);
-  const [liked, setLiked] = useState(false);
   const kind = isVideo ? "Video" : "Image";
 
   return (
@@ -66,7 +65,7 @@ function MediaCard({ item, aspect, index, total, prompt, isVideo, duration, fres
           tone="glass"
           size={30}
           pressed={liked}
-          onClick={() => setLiked((v) => !v)}
+          onClick={() => onToggleFavorite(item.id)}
           className={liked ? "[&_svg]:fill-current [&_svg]:text-accent" : ""}
         />
         <a

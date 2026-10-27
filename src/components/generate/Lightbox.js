@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Copy, Download, WandSparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Heart, RefreshCw, WandSparkles, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import { modelName } from "@/data/catalog";
 import { ratio } from "./MediaCard";
 
 // Full-screen viewer over a flat list of {item, batch}. Native <dialog> gives focus trap + Esc.
-export default function Lightbox({ entries, startIndex, onClose, onReuse, onCopy }) {
+export default function Lightbox({ entries, startIndex, onClose, onReuse, onVariations, onCopy, favorites, onToggleFavorite }) {
   const dialog = useRef(null);
   const [index, setIndex] = useState(startIndex);
   const touchX = useRef(null);
   const { item, batch } = entries[index];
   const isVideo = batch.type === "video";
+  const liked = favorites.includes(item.id);
   const go = (d) => setIndex((i) => (i + d + entries.length) % entries.length);
 
   useEffect(() => {
@@ -107,6 +108,24 @@ export default function Lightbox({ entries, startIndex, onClose, onReuse, onCopy
             >
               <WandSparkles size={15} aria-hidden="true" /> Reuse
             </Button>
+            <Button
+              className="border-white/15 bg-white/10 text-white hover:bg-white/15"
+              onClick={() => {
+                dialog.current.close();
+                onVariations(batch);
+              }}
+            >
+              <RefreshCw size={15} aria-hidden="true" /> More like this
+            </Button>
+            <IconButton
+              label={liked ? "Remove from favorites" : "Add to favorites"}
+              icon={Heart}
+              tone="glass"
+              size={40}
+              pressed={liked}
+              onClick={() => onToggleFavorite(item.id)}
+              className={liked ? "[&_svg]:fill-current [&_svg]:text-accent" : ""}
+            />
             <IconButton label="Copy prompt" icon={Copy} tone="glass" size={40} onClick={() => onCopy(batch.prompt)} />
           </div>
         </aside>

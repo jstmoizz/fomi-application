@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { createGeneration } from "@/lib/api";
+import { interruptPending, load, save, stripFresh } from "@/lib/storage";
 
 function reducer(state, action) {
   switch (action.type) {
@@ -17,6 +18,8 @@ function reducer(state, action) {
       return { ...state, nodes: state.nodes.map((n) => (n.id === action.id ? { ...n, ...action.patch } : n)) };
     case "lock":
       return { ...state, locks: state.locks.map((l) => (l.id === action.id ? { ...l, on: !l.on } : l)) };
+    case "hydrate":
+      return { ...state, ...action.saved, nodes: interruptPending(action.saved.nodes), itemIndex: 0, compare: false };
     case "assign":
       return { ...state, slots: state.slots.map((s) => (s.id === action.slotId ? { ...s, ref: action.ref } : s)) };
     default:
@@ -34,6 +37,21 @@ export function useProject(project) {
     itemIndex: 0,
     compare: false,
   });
+
+  // Resume where the user left off: restore after hydration, then save every change.
+  const storageKey = `fomi:project:${project.id}`;
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const saved = load(storageKey, null);
+    if (saved?.nodes?.some((n) => n.id === saved.selectedId)) dispatch({ type: "hydrate", saved });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- storage is only readable after hydration
+    setRestored(true);
+  }, [storageKey]);
+
+  const { nodes, slots, locks, selectedId } = state;
+  useEffect(() => {
+    if (restored) save(storageKey, { nodes: nodes.map(stripFresh), slots, locks, selectedId });
+  }, [restored, storageKey, nodes, slots, locks, selectedId]);
 
   const byId = useMemo(() => new Map(state.nodes.map((n) => [n.id, n])), [state.nodes]);
   const selected = byId.get(state.selectedId);

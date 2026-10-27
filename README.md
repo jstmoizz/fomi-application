@@ -50,7 +50,9 @@ public/media/    Images and short clips used by the mock API
 - **Native elements first:** `<dialog>` (focus trap, Esc, inert background), `<details>` (accordions), `<select>` (pickers), and radios for segmented controls. Accessibility and mobile behaviour come free, with less JavaScript.
 - **Optimistic generation:** a pending batch with skeletons and progress appears instantly and is replaced in place when the API responds. Failures become an inline retry. Deletes and slot placement have Undo.
 - **Designed per breakpoint:** on mobile, Part A uses a bottom tab bar plus a thumb-reachable composer that expands into a settings sheet. Tablet gets a two-column layout, desktop matches the mockup, and large screens get wider panels with a capped content width. Part B shows one panel at a time on mobile, uses a brief drawer on laptops, and has three columns on desktop.
-- **Shortcuts:** Part A: `/` focus prompt, `Ctrl/⌘+Enter` generate. Part B: `⌘K` palette, `J/K` iterations, `←/→` options, `C` compare, `1–4` place in slot, `/` direct.
+- **Work survives a reload:** your generations, the prompt you were writing, favorites and the whole Part B project (branches, slots, locks) are saved in `localStorage`. Saved data is read after hydration, so prerendering still works. If storage is blocked, the app works as before; it just doesn't remember. A Part B iteration that was running during a reload comes back as "Interrupted", with Retry.
+- **Long generations stay manageable:** you can cancel a pending batch (the request is aborted). The tab title shows `(n) Generating…`, a toast with "View" appears when a batch finishes off-screen, and the browser warns before you close the tab mid-generation.
+- **Shortcuts:** Part A: `/` focus prompt, `Ctrl/⌘+Enter` generate, `↑` in an empty prompt recalls the last one. Part B: `⌘K` palette, `J/K` iterations, `←/→` options, `C` compare, `1–4` place in slot, `/` direct.
 - **Theme:** an inline script applies the saved or system theme before first paint, so there's no flash.
 
 ## Credits

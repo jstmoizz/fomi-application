@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Play, X } from "lucide-react";
+import { Heart, Images, Play, X } from "lucide-react";
 import IconButton from "@/components/ui/IconButton";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -10,13 +10,21 @@ const FILTERS = [
   { id: "all", label: "All" },
   { id: "image", label: "Images" },
   { id: "video", label: "Videos" },
+  { id: "favorites", label: "Favorites" },
 ];
 
+const EMPTY = {
+  all: "Nothing generated yet.",
+  image: "No images yet.",
+  video: "No videos yet. Switch to Video in the composer to make one.",
+  favorites: "No favorites yet. Tap the heart on any result to keep it here.",
+};
+
 // Everything you've made in one masonry view. Picking a tile hands off to the lightbox.
-export default function Gallery({ entries, onClose, onPick }) {
+export default function Gallery({ entries, favorites, onClose, onPick }) {
   const dialog = useRef(null);
   const [filter, setFilter] = useState("all");
-  const shown = entries.map((e, i) => ({ ...e, i })).filter((e) => filter === "all" || e.batch.type === filter);
+  const shown = entries.map((e, i) => ({ ...e, i })).filter((e) => (filter === "favorites" ? favorites.includes(e.item.id) : filter === "all" || e.batch.type === filter));
 
   useEffect(() => {
     dialog.current.showModal();
@@ -34,10 +42,16 @@ export default function Gallery({ entries, onClose, onPick }) {
           <h2 id="gallery-title" className="mr-auto text-base font-semibold">
             Gallery <span className="ml-1 text-sm font-normal text-ink-3">{shown.length}</span>
           </h2>
-          <SegmentedControl label="Filter" name="gallery-filter" value={filter} onChange={setFilter} options={FILTERS} className="w-60" />
+          <SegmentedControl label="Filter" name="gallery-filter" value={filter} onChange={setFilter} options={FILTERS} className="w-80 max-sm:w-full" />
           <IconButton label="Close gallery" icon={X} onClick={() => dialog.current.close()} tooltip="bottom" />
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          {shown.length === 0 && (
+            <div className="flex h-full animate-fade flex-col items-center justify-center gap-3 text-center text-sm text-ink-3">
+              {filter === "favorites" ? <Heart size={22} aria-hidden="true" /> : <Images size={22} aria-hidden="true" />}
+              <p className="max-w-xs">{EMPTY[filter]}</p>
+            </div>
+          )}
           <ul className="columns-2 gap-3 sm:columns-3 lg:columns-4 2xl:columns-5">
             {shown.map(({ item, batch, i }) => (
               <li key={item.id} className="mb-3 break-inside-avoid">
