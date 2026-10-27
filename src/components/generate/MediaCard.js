@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import Image from "next/image";
 import { Download, Expand, Heart, Play } from "lucide-react";
 import IconButton from "@/components/ui/IconButton";
+import { fileName } from "@/lib/files";
 
 export const ratio = (aspect) => aspect.replace(":", " / ");
 export const isWide = (aspect) => aspect === "16:9";
@@ -70,7 +71,7 @@ function MediaCard({ item, aspect, index, total, prompt, isVideo, duration, fres
         />
         <a
           href={item.video ?? item.src}
-          download
+          download={fileName(prompt, index, item.video ?? item.src)}
           aria-label={`Download ${kind.toLowerCase()} ${index + 1}`}
           className="grid size-[30px] place-items-center rounded-full bg-black/45 text-white backdrop-blur-md transition-[background-color,transform] duration-150 hover:bg-black/65 active:scale-90"
         >

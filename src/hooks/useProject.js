@@ -4,7 +4,15 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { createGeneration } from "@/lib/api";
 import { interruptPending, load, save, stripFresh } from "@/lib/storage";
 
+// Actions that change the project (as opposed to just viewing it) mark it for saving.
+const EDITS = new Set(["select", "add", "patch", "lock", "assign"]);
+
 function reducer(state, action) {
+  const next = apply(state, action);
+  return EDITS.has(action.type) ? { ...next, changed: true } : next;
+}
+
+function apply(state, action) {
   switch (action.type) {
     case "select":
       return { ...state, selectedId: action.id, itemIndex: 0, compare: false };
@@ -36,6 +44,8 @@ export function useProject(project) {
     selectedId: project.resumeNodeId,
     itemIndex: 0,
     compare: false,
+    changed: false,
+    savedAt: null,
   });
 
   // Resume where the user left off: restore after hydration, then save every change.
@@ -48,10 +58,11 @@ export function useProject(project) {
     setRestored(true);
   }, [storageKey]);
 
-  const { nodes, slots, locks, selectedId } = state;
+  // Only save real edits, so "saved at" stays the time of the last change, not the last visit.
+  const { nodes, slots, locks, selectedId, changed } = state;
   useEffect(() => {
-    if (restored) save(storageKey, { nodes: nodes.map(stripFresh), slots, locks, selectedId });
-  }, [restored, storageKey, nodes, slots, locks, selectedId]);
+    if (restored && changed) save(storageKey, { nodes: nodes.map(stripFresh), slots, locks, selectedId, savedAt: Date.now() });
+  }, [restored, changed, storageKey, nodes, slots, locks, selectedId]);
 
   const byId = useMemo(() => new Map(state.nodes.map((n) => [n.id, n])), [state.nodes]);
   const selected = byId.get(state.selectedId);
@@ -117,7 +128,15 @@ export function useProject(project) {
     }
   }, []);
 
-  const resolveRef = useCallback((ref) => (ref ? byId.get(ref.nodeId)?.items[ref.index] : null), [byId]);
+  /** The item a slot points at, plus the aspect it was generated in (to flag crops). */
+  const resolveRef = useCallback(
+    (ref) => {
+      const node = ref && byId.get(ref.nodeId);
+      const item = node?.items[ref.index];
+      return item ? { ...item, aspect: node.aspect } : null;
+    },
+    [byId],
+  );
 
   return { ...state, dispatch, byId, selected, path, ordered, activeLocks, branch, retry, resolveRef };
 }

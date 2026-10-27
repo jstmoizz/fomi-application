@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Copy, Download, Heart, RefreshCw, WandSparkl
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import { modelName } from "@/data/catalog";
+import { fileName } from "@/lib/files";
 import { ratio } from "./MediaCard";
 
 // Full-screen viewer over a flat list of {item, batch}. Native <dialog> gives focus trap + Esc.
@@ -17,6 +18,9 @@ export default function Lightbox({ entries, startIndex, onClose, onReuse, onVari
   const isVideo = batch.type === "video";
   const liked = favorites.includes(item.id);
   const go = (d) => setIndex((i) => (i + d + entries.length) % entries.length);
+  const at = (d) => entries[(index + d + entries.length) % entries.length];
+  // Prefetch the neighbours at the same size so arrowing feels instant.
+  const neighbours = entries.length > 1 ? [at(-1), at(1)].filter((e) => e.batch.type !== "video" && e.item.id !== item.id) : [];
 
   useEffect(() => {
     dialog.current.showModal();
@@ -66,6 +70,9 @@ export default function Lightbox({ entries, startIndex, onClose, onReuse, onVari
             )}
           </div>
 
+          {neighbours.map((e) => (
+            <Image key={e.item.id} src={e.item.src} alt="" fill sizes="(min-width: 1024px) 70vw, 100vw" className="invisible" aria-hidden="true" />
+          ))}
           {entries.length > 1 && (
             <>
               <NavButton side="left" label="Previous" icon={ChevronLeft} onClick={() => go(-1)} />
@@ -90,11 +97,12 @@ export default function Lightbox({ entries, startIndex, onClose, onReuse, onVari
             <Meta label="Ratio" value={batch.aspect} />
             {batch.style && <Meta label="Style" value={batch.style} />}
             <Meta label="Size" value={`${item.width} × ${item.height}`} />
+            {batch.seed != null && <Meta label="Seed" value={batch.seed} />}
           </dl>
           <div className="mt-auto flex flex-wrap gap-2">
             <a
               href={item.video ?? item.src}
-              download
+              download={fileName(batch.prompt, batch.items.indexOf(item), item.video ?? item.src)}
               className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-linear-to-b from-accent-from to-accent-to px-4 text-sm font-medium text-white transition-[filter,transform] duration-150 hover:brightness-110 active:scale-[0.97]"
             >
               <Download size={15} aria-hidden="true" /> Download

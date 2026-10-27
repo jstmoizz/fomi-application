@@ -25,6 +25,8 @@ const VIEWS = [
   { id: "brief", label: "Brief", icon: Target },
 ];
 
+const formatSaved = (t) => new Date(t).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+
 const isTyping = (el) => /input|textarea|select/i.test(el.tagName) || el.isContentEditable;
 
 export default function WorkspaceApp({ project }) {
@@ -52,9 +54,37 @@ export default function WorkspaceApp({ project }) {
       const slot = slots.find((s) => s.id === slotId);
       const previous = slot.ref;
       dispatch({ type: "assign", slotId, ref });
-      if (ref) toast(`Placed in ${slot.name}`, { label: "Undo", onClick: () => dispatch({ type: "assign", slotId, ref: previous }) });
+      if (!ref) return;
+      const done = slots.every((s) => s.id === slotId || s.ref);
+      toast(done ? `All ${slots.length} deliverables placed. Ready to deliver.` : `Placed in ${slot.name}`, {
+        label: "Undo",
+        onClick: () => dispatch({ type: "assign", slotId, ref: previous }),
+      });
     },
     [slots, dispatch, toast],
+  );
+
+  // A branch that lands while you're looking at another iteration shouldn't go unnoticed.
+  const inFlight = useRef(new Set());
+  useEffect(() => {
+    for (const n of p.nodes) {
+      if (n.status === "pending") inFlight.current.add(n.id);
+      else if (inFlight.current.delete(n.id) && n.status === "done" && n.id !== selected.id) {
+        toast(`“${n.direction}” is ready`, { label: "View", onClick: () => select(n.id) });
+      }
+    }
+  }, [p.nodes, selected.id, toast, select]);
+
+  const copyPrompt = useCallback(
+    async (text) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Prompt copied");
+      } catch {
+        toast("Couldn’t access the clipboard");
+      }
+    },
+    [toast],
   );
 
   const doBranch = useCallback(
@@ -127,7 +157,9 @@ export default function WorkspaceApp({ project }) {
             <span className="font-normal text-ink-3 max-sm:hidden">{project.client} / </span>
             {project.name}
           </h1>
-          <p className="truncate text-[11px] leading-tight text-ink-3">Resumed where you left off · edited {project.lastEdited}</p>
+          <p className="truncate text-[11px] leading-tight text-ink-3" aria-live="polite">
+            {p.changed ? "All changes saved in this browser" : `Resumed where you left off · edited ${p.savedAt ? formatSaved(p.savedAt) : project.lastEdited}`}
+          </p>
         </div>
 
         <button
@@ -172,6 +204,7 @@ export default function WorkspaceApp({ project }) {
           onItem={(index) => dispatch({ type: "item", index })}
           onCompare={() => dispatch({ type: "compare" })}
           onRetry={p.retry}
+          onCopyPrompt={copyPrompt}
           className={view === "stage" ? "" : "max-lg:hidden"}
         >
           <DirectionComposer node={selected} activeLocks={p.activeLocks} onBranch={doBranch} onToggleLock={toggleLock} inputRef={composerRef} />

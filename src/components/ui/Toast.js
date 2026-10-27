@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const ToastContext = createContext(() => {});
 
@@ -12,6 +12,16 @@ export function useToast() {
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null);
   const timer = useRef();
+  const region = useRef(null);
+
+  // Modal <dialog>s live in the browser's top layer, above any z-index. The toast is a popover so it can
+  // join that layer too; re-showing it on every toast puts it above whatever dialog opened last.
+  useEffect(() => {
+    const el = region.current;
+    if (!el?.showPopover) return;
+    if (el.matches(":popover-open")) el.hidePopover();
+    el.showPopover();
+  }, [toast]);
 
   const show = useCallback((message, action) => {
     clearTimeout(timer.current);
@@ -23,9 +33,11 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={show}>
       {children}
       <div
+        ref={region}
+        popover="manual"
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 lg:bottom-6"
+        className="pointer-events-none fixed inset-x-0 top-auto bottom-24 z-[60] m-0 flex h-auto w-full justify-center overflow-visible border-0 bg-transparent p-0 px-4 lg:bottom-6"
       >
         {toast && (
           <div

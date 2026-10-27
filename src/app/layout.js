@@ -10,6 +10,13 @@ const poppins = Poppins({
 export const metadata = {
   title: { default: "Fomi — Create", template: "%s · Fomi" },
   description: "Turn ideas into professional images and videos with Fomi.",
+  // Link previews for wherever the URL gets shared. On Vercel, Next resolves relative URLs from the deployment URL.
+  openGraph: {
+    siteName: "Fomi",
+    type: "website",
+    images: [{ url: "/media/img/portrait-1.jpg", width: 900, height: 900, alt: "A portrait generated in Fomi" }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport = {

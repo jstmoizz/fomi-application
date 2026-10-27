@@ -21,15 +21,21 @@ export function save(key, value) {
 /**
  * useState that survives reloads. Reads after mount so prerendered HTML hydrates cleanly,
  * and only writes once the saved value has been read (so the default never overwrites it).
+ * `revive(saved, initial)` can repair data saved by an older version of the app.
  */
-export function useStoredState(key, initial) {
+export function useStoredState(key, initial, revive = (saved) => saved) {
   const [value, setValue] = useState(initial);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- storage is only readable after hydration
-    setValue((v) => load(key, v));
+    setValue((v) => {
+      const saved = load(key, undefined);
+      return saved === undefined ? v : revive(saved, v);
+    });
     setReady(true);
+    // revive is read once on mount, like `initial`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   useEffect(() => {
@@ -37,6 +43,14 @@ export function useStoredState(key, initial) {
   }, [key, value, ready]);
 
   return [value, setValue, ready];
+}
+
+export function clearStored(prefix = "fomi:") {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith(prefix))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {}
 }
 
 /** Saved batches first (they are the newest), then server batches not already present. */

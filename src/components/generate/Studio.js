@@ -24,6 +24,15 @@ const INITIAL_DRAFT = {
   seed: "",
 };
 
+// A draft saved by an older version may miss fields; fill gaps from the defaults instead of crashing.
+function reviveDraft(saved, initial) {
+  if (!saved || typeof saved !== "object" || !(saved.mode in initial.settings)) return initial;
+  const settings = Object.fromEntries(
+    Object.entries(initial.settings).map(([mode, defaults]) => [mode, { ...defaults, ...saved.settings?.[mode] }]),
+  );
+  return { ...initial, ...saved, prompt: String(saved.prompt ?? ""), settings };
+}
+
 function toParams(source) {
   const { type, prompt, model, aspect, count, duration, style, negativePrompt, seed } = source;
   return {
@@ -45,7 +54,7 @@ const scrollToBatch = (id) =>
 export default function Studio({ initialPage }) {
   const toast = useToast();
   const gen = useGenerations(initialPage);
-  const [draft, setDraft] = useStoredState("fomi:draft", INITIAL_DRAFT);
+  const [draft, setDraft] = useStoredState("fomi:draft", INITIAL_DRAFT, reviveDraft);
   const [favorites, setFavorites] = useStoredState("fomi:favorites", []);
   const [viewer, setViewer] = useState(null);
   const [galleryOpen, setGalleryOpen] = useState(false);

@@ -2,14 +2,27 @@
 
 import { memo, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, Lock, Plus, Target, X } from "lucide-react";
+import { CheckCircle2, Download, Lock, Plus, Target, X } from "lucide-react";
+import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import media from "@/data/media.json";
+import { downloadAll, fileName } from "@/lib/files";
 
 // What this project must ship (slots) and what must stay true (locks). The finish line, always visible.
 function BriefPanel({ project, slots, locks, current, resolveRef, onAssign, onToggleLock, onClose, className = "" }) {
   const [briefOpen, setBriefOpen] = useState(false);
   const filled = slots.filter((s) => s.ref).length;
+  const ready = filled === slots.length;
+
+  function downloadPack() {
+    downloadAll(
+      slots.map((s) => {
+        const it = resolveRef(s.ref);
+        const href = it.video ?? it.src;
+        return { href, name: fileName(`${s.name} ${s.aspect}`, null, href) };
+      }),
+    );
+  }
 
   return (
     <aside aria-label="Brief" className={`flex min-h-0 flex-col overflow-y-auto rounded-[20px] bg-surface shadow-card ${className}`}>
@@ -34,9 +47,15 @@ function BriefPanel({ project, slots, locks, current, resolveRef, onAssign, onTo
           <h2 id="slots-title" className="flex items-center gap-2 text-sm font-semibold">
             <Target size={15} aria-hidden="true" className="text-accent" /> Deliverables
           </h2>
-          <span className="text-xs tabular-nums text-ink-3">
-            {filled}/{slots.length}
-          </span>
+          {ready ? (
+            <span className="flex animate-fade items-center gap-1 text-xs font-medium text-ink">
+              <CheckCircle2 size={14} aria-hidden="true" className="text-accent" /> Ready to deliver
+            </span>
+          ) : (
+            <span className="text-xs tabular-nums text-ink-3">
+              {filled}/{slots.length}
+            </span>
+          )}
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-label="Deliverables filled" aria-valuenow={filled} aria-valuemin={0} aria-valuemax={slots.length}>
           <span className="block h-full rounded-full bg-accent transition-[width] duration-500 ease-out" style={{ width: `${(filled / slots.length) * 100}%` }} />
@@ -57,6 +76,11 @@ function BriefPanel({ project, slots, locks, current, resolveRef, onAssign, onTo
                         <Image key={item.id} src={item.src} alt="" fill sizes="140px" placeholder="blur" blurDataURL={item.blur} className="animate-rise object-cover" />
                       </span>
                       <CheckCircle2 size={16} aria-label="Filled" className="absolute right-1.5 top-1.5 fill-surface text-accent" />
+                      {item.aspect !== slot.aspect && (
+                        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur">
+                          Cropped from {item.aspect}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => onAssign(slot.id, null)}
@@ -98,6 +122,12 @@ function BriefPanel({ project, slots, locks, current, resolveRef, onAssign, onTo
             );
           })}
         </ul>
+
+        {ready && (
+          <Button variant="primary" size="sm" onClick={downloadPack} className="mt-4 w-full animate-rise">
+            <Download size={14} aria-hidden="true" /> Download pack · {slots.length} files
+          </Button>
+        )}
       </section>
 
       <section className="p-4" aria-labelledby="locks-title">

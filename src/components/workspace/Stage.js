@@ -2,15 +2,17 @@
 
 import { Fragment, useEffect, useRef } from "react";
 import Image from "next/image";
-import { ChevronRight, Columns2, Download, RotateCcw, TriangleAlert } from "lucide-react";
+import { ChevronRight, Columns2, Copy, Download, RotateCcw, TriangleAlert } from "lucide-react";
 import Button from "@/components/ui/Button";
+import IconButton from "@/components/ui/IconButton";
 import Spinner from "@/components/ui/Spinner";
+import { fileName } from "@/lib/files";
 import CompareSlider from "./CompareSlider";
 
 const ratio = (aspect) => aspect.split(":").map(Number);
 
 // The selected iteration, big. Breadcrumb shows how it was made; compare shows what the last direction changed.
-export default function Stage({ node, path, itemIndex, compare, parent, onSelectNode, onItem, onCompare, onRetry, children, className = "" }) {
+export default function Stage({ node, path, itemIndex, compare, parent, onSelectNode, onItem, onCompare, onRetry, onCopyPrompt, children, className = "" }) {
   const [w, h] = ratio(node.aspect);
   const item = node.items[itemIndex];
   const parentItem = parent?.items[Math.min(itemIndex, parent.items.length - 1)];
@@ -58,7 +60,7 @@ export default function Stage({ node, path, itemIndex, compare, parent, onSelect
           {item && (
             <a
               href={item.video ?? item.src}
-              download
+              download={fileName(node.direction, itemIndex, item.video ?? item.src)}
               aria-label="Download current"
               className="grid size-8 place-items-center rounded-full border border-line bg-surface text-ink-2 transition-[background-color,transform] duration-150 hover:bg-surface-2 hover:text-ink active:scale-90"
             >
@@ -67,6 +69,18 @@ export default function Stage({ node, path, itemIndex, compare, parent, onSelect
           )}
         </div>
       </header>
+
+      {/* Directions + locks compose the real prompt; showing it keeps the system honest. */}
+      <details className="group/prompt -mt-1 text-xs">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-full px-2.5 py-1 text-ink-3 transition-colors duration-150 hover:bg-surface-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+          <ChevronRight size={12} aria-hidden="true" className="transition-transform duration-150 group-open/prompt:rotate-90" />
+          Prompt sent to the model
+        </summary>
+        <div className="mt-1 flex animate-fade items-start gap-2 rounded-xl bg-surface p-3 shadow-card">
+          <p className="max-h-28 flex-1 overflow-y-auto leading-relaxed text-ink-2">{node.prompt}</p>
+          <IconButton label="Copy prompt" icon={Copy} size={28} onClick={() => onCopyPrompt(node.prompt)} tooltip="bottom" />
+        </div>
+      </details>
 
       {/* Viewer: sized with container units so any aspect ratio fits without cropping */}
       <div className="relative min-h-[240px] flex-1 [container-type:size]">
