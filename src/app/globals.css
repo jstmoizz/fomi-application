@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Design tokens — measured from the mockup, light theme first. */
+:root {
+  --bg: #f8f5f2;
+  --surface: #ffffff;
+  --surface-2: #f3eee9;
+  --panel: #f7ece7;
+  --panel-strong: #efddd5;
+  --line: #ebe1db;
+  --line-strong: #dccbc2;
+  --ink: #1f1916;
+  --ink-2: #554b45;
+  --ink-3: #74695f;
+  --accent: #e2876a;
+  --accent-soft: #fbe3da;
+  /* Darker terracotta pair keeps white button text above 4.5:1. */
+  --accent-from: #c4653f;
+  --accent-to: #a84d2f;
+  --danger: #b4321f;
+  --shadow-float: 0 10px 34px -14px rgb(84 44 26 / 0.22), 0 2px 6px -2px rgb(84 44 26 / 0.08);
+  --shadow-card: 0 1px 2px rgb(84 44 26 / 0.06);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #131010;
+  --surface: #1c1816;
+  --surface-2: #26201d;
+  --panel: #241c19;
+  --panel-strong: #33271f;
+  --line: #352c27;
+  --line-strong: #4a3d36;
+  --ink: #f5efeb;
+  --ink-2: #cfc4bd;
+  --ink-3: #a3968e;
+  --accent: #ec9476;
+  --accent-soft: #3d2820;
+  --danger: #f08a7a;
+  --shadow-float: 0 12px 36px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-panel: var(--panel);
+  --color-panel-strong: var(--panel-strong);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-from: var(--accent-from);
+  --color-accent-to: var(--accent-to);
+  --color-danger: var(--danger);
+  --shadow-float: var(--shadow-float);
+  --shadow-card: var(--shadow-card);
+  --ease-out: var(--ease-out);
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --breakpoint-3xl: 120rem;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-rise: rise 0.45s var(--ease-out) both;
+  --animate-fade: fade 0.3s var(--ease-out) both;
+}
+
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes grow {
+  from { transform: scaleX(0.03); }
+  to { transform: scaleX(0.9); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply font-sans antialiased;
+    transition: background-color 250ms var(--ease-out), color 250ms var(--ease-out);
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* Thin, theme-aware scrollbars for the workspace panes. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  dialog::backdrop {
+    background: rgb(12 8 6 / 0.72);
+    backdrop-filter: blur(6px);
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--panel-strong) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
